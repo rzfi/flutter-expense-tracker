@@ -32,14 +32,14 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: color.primary,
         foregroundColor: color.onPrimary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet_rounded),
-            tooltip: 'Set Budget',
-            onPressed: () => showDialog(
-              context: context,
-              builder: (_) => _BudgetDialog(currentBudget: budget),
-            ),
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.account_balance_wallet_rounded),
+          //   tooltip: 'Set Budget',
+          //   onPressed: () => showDialog(
+          //     context: context,
+          //     builder: (_) => _BudgetDialog(currentBudget: budget),
+          //   ),
+          // ),
           // IconButton(
           //   icon: const Icon(Icons.refresh),
           //   tooltip: 'Reset All',
@@ -397,50 +397,50 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _BudgetDialog extends StatelessWidget {
-  final double currentBudget;
-  const _BudgetDialog({required this.currentBudget});
+// class _BudgetDialog extends StatelessWidget {
+//   final double currentBudget;
+//   const _BudgetDialog({required this.currentBudget});
 
-  @override
-  Widget build(BuildContext context) {
-    final controller = TextEditingController(
-      text: currentBudget.toStringAsFixed(2),
-    );
-    final color = Theme.of(context).colorScheme;
+//   @override
+//   Widget build(BuildContext context) {
+//     final controller = TextEditingController(
+//       text: currentBudget.toStringAsFixed(2),
+//     );
+//     final color = Theme.of(context).colorScheme;
 
-    return AlertDialog(
-      title: const Text('Set Overall Budget'),
-      content: TextField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(
-          labelText: 'Budget (₹)',
-          border: OutlineInputBorder(),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color.primary,
-            foregroundColor: color.onPrimary,
-          ),
-          onPressed: () {
-            final value = double.tryParse(controller.text.trim());
-            if (value != null && value > 0) {
-              context.read<BudgetProvider>().setBudget(value);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    );
-  }
-}
+//     return AlertDialog(
+//       title: const Text('Set Overall Budget'),
+//       content: TextField(
+//         controller: controller,
+//         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+//         decoration: const InputDecoration(
+//           labelText: 'Budget (₹)',
+//           border: OutlineInputBorder(),
+//         ),
+//       ),
+//       actions: [
+//         TextButton(
+//           onPressed: () => Navigator.pop(context),
+//           child: const Text('Cancel'),
+//         ),
+//         ElevatedButton(
+//           style: ElevatedButton.styleFrom(
+//             backgroundColor: color.primary,
+//             foregroundColor: color.onPrimary,
+//           ),
+//           onPressed: () {
+//             final value = double.tryParse(controller.text.trim());
+//             if (value != null && value > 0) {
+//               context.read<BudgetProvider>().setBudget(value);
+//               Navigator.pop(context);
+//             }
+//           },
+//           child: const Text('Save'),
+//         ),
+//       ],
+//     );
+//   }
+// }
 
 // class _ResetExpensesDialog extends StatelessWidget {
 //   final Future<void> Function() onReset;

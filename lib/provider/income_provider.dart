@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import '../models/income.dart';
 import 'finance_boxes.dart';
 
 class IncomeProvider extends ChangeNotifier {
   List<Income> _items = [];
+  StreamSubscription<BoxEvent>? _sub;
 
   List<Income> get items => List.unmodifiable(_items);
 
@@ -13,14 +16,25 @@ class IncomeProvider extends ChangeNotifier {
   double get totalAll =>
       _items.fold<double>(0, (sum, i) => sum + i.amount);
 
+  IncomeProvider() {
+    _sub = FinanceBoxes.incomes.watch().listen((_) => load());
+  }
+
   Future<void> load() async {
-    final box = FinanceBoxes.incomes;
-    _items = box.values.toList();
-    _items.sort((a, b) => b.date.compareTo(a.date));
+    _items = FinanceBoxes.incomes.values.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
   }
 
-  /// Step 1: create income but keep it unconfirmed (UI shows confirmation screen/dialog).
+  double confirmedTotalBetween(DateTime start, DateTime endInclusive) {
+    return _items
+        .where((i) =>
+            i.isConfirmed &&
+            !i.date.isBefore(start) &&
+            !i.date.isAfter(endInclusive))
+        .fold<double>(0, (sum, i) => sum + i.amount);
+  }
+
   Future<void> addIncomeDraft(Income income) async {
     final draft = Income(
       id: income.id,
@@ -34,7 +48,6 @@ class IncomeProvider extends ChangeNotifier {
     await load();
   }
 
-  /// Step 2: confirm the draft so it counts in the budget/net balance.
   Future<void> confirmIncome(Income income) async {
     income.isConfirmed = true;
     await income.save();
@@ -44,5 +57,11 @@ class IncomeProvider extends ChangeNotifier {
   Future<void> deleteIncome(Income income) async {
     await income.delete();
     await load();
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

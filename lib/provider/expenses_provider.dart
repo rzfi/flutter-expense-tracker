@@ -1,32 +1,35 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import '../models/expense.dart';
 import 'finance_boxes.dart';
 
 class ExpensesProvider extends ChangeNotifier {
   List<Expense> _items = [];
+  StreamSubscription<BoxEvent>? _sub;
 
   List<Expense> get items => List.unmodifiable(_items);
 
-  /// Total of all expenses.
   double get total =>
-      _items.fold<double>(0, (sum, e) => sum + (e.amount));
+      _items.fold<double>(0, (sum, e) => sum + e.amount);
+
+  ExpensesProvider() {
+    _sub = FinanceBoxes.expenses.watch().listen((_) => load());
+  }
 
   Future<void> load() async {
-    final box = FinanceBoxes.expenses;
-    _items = box.values.toList();
-
-    // Sort: latest first
-    _items.sort((a, b) => b.date.compareTo(a.date));
+    _items = FinanceBoxes.expenses.values.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
   }
 
   Future<void> addExpense(Expense expense) async {
     await FinanceBoxes.expenses.add(expense);
+    // load() will be triggered by watch(), but calling it is fine too.
     await load();
   }
 
   Future<void> updateExpense(Expense expense) async {
-    // Because Expense extends HiveObject, it has save()
     await expense.save();
     await load();
   }
@@ -36,19 +39,15 @@ class ExpensesProvider extends ChangeNotifier {
     await load();
   }
 
-  /// Helpers for budget/report calculations
   double totalBetween(DateTime start, DateTime endInclusive) {
     return _items
         .where((e) => !e.date.isBefore(start) && !e.date.isAfter(endInclusive))
         .fold<double>(0, (sum, e) => sum + e.amount);
   }
 
-  Map<String, double> categoryTotalsBetween(DateTime start, DateTime endInclusive) {
-    final Map<String, double> out = {};
-    for (final e in _items.where(
-        (e) => !e.date.isBefore(start) && !e.date.isAfter(endInclusive))) {
-      out[e.category] = (out[e.category] ?? 0) + e.amount;
-    }
-    return out;
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

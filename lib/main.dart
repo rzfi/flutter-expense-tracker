@@ -52,9 +52,15 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ExpensesProvider()..load()),
         ChangeNotifierProvider(create: (_) => IncomeProvider()..load()),
-        ChangeNotifierProvider(
-            create: (_) => FutureExpensesProvider()..load()),
-        ChangeNotifierProvider(create: (_) => BudgetProvider()..load()),
+        ChangeNotifierProvider(create: (_) => FutureExpensesProvider()..load()),
+        ChangeNotifierProxyProvider<IncomeProvider, BudgetProvider>(
+          create: (_) => BudgetProvider()..load(),
+          update: (_, income, budget) {
+            budget ??= BudgetProvider()..load();
+            budget.attachIncome(income);
+            return budget;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
@@ -72,11 +78,11 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'Budgo',
           theme: themeProvider.materialTheme.darkScheme().copyWith(
-                visualDensity: VisualDensity.adaptivePlatformDensity,
-              ),
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
           darkTheme: themeProvider.materialTheme.darkScheme().copyWith(
-                visualDensity: VisualDensity.adaptivePlatformDensity,
-              ),
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
           themeMode: themeProvider.themeMode,
 
           // FIXED: Removed 'home' property to avoid conflict
@@ -94,8 +100,7 @@ class MyApp extends StatelessWidget {
 
             // New routes for Phase 3
             AppRoutes.income: (context) => const IncomeScreen(),
-            AppRoutes.futureExpenses: (context) =>
-                const FutureExpensesScreen(),
+            AppRoutes.futureExpenses: (context) => const FutureExpensesScreen(),
             AppRoutes.budget: (context) => const BudgetScreen(),
             AppRoutes.reports: (context) => const ReportsScreen(),
           },

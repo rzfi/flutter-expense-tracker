@@ -1,28 +1,55 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
+
 import '../models/budget.dart';
-import 'finance_boxes.dart';
 import 'expenses_provider.dart';
+import 'finance_boxes.dart';
+import 'income_provider.dart';
 
 class BudgetProvider extends ChangeNotifier {
   Budget? _active;
+  IncomeProvider? _income;
+  StreamSubscription<BoxEvent>? _sub;
 
-  /// The active budget object (weekly/monthly/overall).
   Budget? get activeBudget => _active;
 
-  /// Backward compatible getter used by HomeScreen (expects a double).
-  /// If no budget is set, returns 0.
-  double get budget => _active?.limit ?? 0.0;
+  BudgetProvider() {
+    _sub = FinanceBoxes.budgets.watch().listen((_) => load());
+  }
 
-  /// Convenience: whether a budget exists.
-  bool get hasBudget => _active != null && (_active!.limit > 0);
+  // Inject IncomeProvider using ChangeNotifierProxyProvider (see main.dart section)
+  void attachIncome(IncomeProvider income) {
+    _income = income;
+    notifyListeners();
+  }
 
   Future<void> load() async {
     _active = FinanceBoxes.budgets.get(FinanceBoxes.activeBudgetKey);
     notifyListeners();
   }
 
-  /// Compatibility method for your current UI ("Set Overall Budget").
-  /// Stores an always-valid "overall" budget that spans a long time window.
+  bool get hasBudget => _active != null && (_active!.limit > 0);
+
+  /// Base budget set by user (stored in Hive).
+  double get baseBudget => _active?.limit ?? 0.0;
+
+  /// Confirmed income contribution (overall = all-time; weekly/monthly = within active range).
+  double get confirmedIncomeContribution {
+    final inc = _income;
+    final b = _active;
+    if (inc == null || b == null) return 0.0;
+
+    if (b.period == 'overall') {
+      return inc.totalConfirmed;
+    }
+    return inc.confirmedTotalBetween(b.startDate, b.endDate);
+  }
+
+  /// This is what Home screen should show as "Budget".
+  double get budget => baseBudget + confirmedIncomeContribution;
+
+  /// Compatibility method (your Home budget dialog uses this).
   Future<void> setBudget(double limit) async {
     final now = DateTime.now();
     final budget = Budget(
@@ -34,7 +61,6 @@ class BudgetProvider extends ChangeNotifier {
       isActive: true,
       warningThreshold: 0.9,
     );
-
     await FinanceBoxes.budgets.put(FinanceBoxes.activeBudgetKey, budget);
     await load();
   }
@@ -42,14 +68,11 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> setWeeklyBudget({
     required String id,
     required double limit,
-    required DateTime weekStart, // choose Monday in UI
+    required DateTime weekStart,
     double warningThreshold = 0.9,
   }) async {
     final start = DateTime(weekStart.year, weekStart.month, weekStart.day);
-    final end = start.add(
-      const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
-    );
-
+    final end = start.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
     final budget = Budget(
       id: id,
       limit: limit,
@@ -59,7 +82,6 @@ class BudgetProvider extends ChangeNotifier {
       isActive: true,
       warningThreshold: warningThreshold,
     );
-
     await FinanceBoxes.budgets.put(FinanceBoxes.activeBudgetKey, budget);
     await load();
   }
@@ -71,11 +93,9 @@ class BudgetProvider extends ChangeNotifier {
     double warningThreshold = 0.9,
   }) async {
     final start = DateTime(anyDayInMonth.year, anyDayInMonth.month, 1);
-
     final nextMonth = (anyDayInMonth.month == 12)
         ? DateTime(anyDayInMonth.year + 1, 1, 1)
         : DateTime(anyDayInMonth.year, anyDayInMonth.month + 1, 1);
-
     final end = nextMonth.subtract(const Duration(seconds: 1));
 
     final budget = Budget(
@@ -87,7 +107,6 @@ class BudgetProvider extends ChangeNotifier {
       isActive: true,
       warningThreshold: warningThreshold,
     );
-
     await FinanceBoxes.budgets.put(FinanceBoxes.activeBudgetKey, budget);
     await load();
   }
@@ -97,7 +116,6 @@ class BudgetProvider extends ChangeNotifier {
     await load();
   }
 
-  /// Derived stats (needs expenses provider data)
   double spentInActivePeriod(ExpensesProvider expenses) {
     final b = _active;
     if (b == null) return 0;
@@ -107,23 +125,27 @@ class BudgetProvider extends ChangeNotifier {
   double remainingInActivePeriod(ExpensesProvider expenses) {
     final b = _active;
     if (b == null) return 0;
-    return (b.limit - spentInActivePeriod(expenses));
+    return budget - spentInActivePeriod(expenses);
   }
 
   double usageRatio(ExpensesProvider expenses) {
     final b = _active;
-    if (b == null || b.limit <= 0) return 0;
-    return (spentInActivePeriod(expenses) / b.limit).clamp(0, 10);
+    if (b == null || budget <= 0) return 0;
+    return (spentInActivePeriod(expenses) / budget).clamp(0, 10);
   }
 
   bool isNearLimit(ExpensesProvider expenses) {
     final b = _active;
     if (b == null) return false;
-    final ratio = usageRatio(expenses);
-    return ratio >= b.warningThreshold && ratio < 1;
+    final r = usageRatio(expenses);
+    return r >= b.warningThreshold && r < 1;
   }
 
-  bool isOverLimit(ExpensesProvider expenses) {
-    return usageRatio(expenses) >= 1;
+  bool isOverLimit(ExpensesProvider expenses) => usageRatio(expenses) >= 1;
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }
