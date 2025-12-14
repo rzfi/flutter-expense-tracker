@@ -77,7 +77,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Budgo',
-          theme: themeProvider.materialTheme.darkScheme().copyWith(
+          theme: themeProvider.materialTheme.lightScheme().copyWith(
             visualDensity: VisualDensity.adaptivePlatformDensity,
           ),
           darkTheme: themeProvider.materialTheme.darkScheme().copyWith(
