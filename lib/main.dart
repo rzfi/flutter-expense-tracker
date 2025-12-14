@@ -15,8 +15,6 @@ import 'package:expense/models/expense.dart';
 import 'package:expense/screens/add_expense_screen.dart';
 import 'package:expense/screens/expense_list_screen.dart';
 import 'package:expense/screens/home_screen.dart';
-import 'package:expense/screens/login_screen.dart';
-import 'package:expense/screens/sign_up_screen.dart';
 import 'package:expense/screens/splash_screen.dart';
 import 'package:expense/screens/settings_screen.dart';
 
@@ -85,14 +83,11 @@ class MyApp extends StatelessWidget {
           ),
           themeMode: themeProvider.themeMode,
 
-          // FIXED: Removed 'home' property to avoid conflict
           initialRoute: AppRoutes.splash,
 
           routes: {
             // Existing routes
             AppRoutes.splash: (context) => const SplashScreen(),
-            '/login': (context) => const LoginScreen(),
-            '/signup': (context) => const SignUpScreen(),
             AppRoutes.home: (context) => const HomeScreen(),
             '/add-expense': (context) => const AddExpenseScreen(),
             AppRoutes.expenses: (context) => const ExpenseListScreen(),

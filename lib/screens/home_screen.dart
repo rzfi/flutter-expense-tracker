@@ -4,6 +4,7 @@ import 'package:expense/navigation/app_routes.dart';
 import 'package:expense/provider/budget_provider.dart';
 import 'package:expense/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -18,6 +19,26 @@ class HomeScreen extends StatelessWidget {
     'Shopping',
     'Others',
   ];
+  Future<void> _confirmExit(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Exit app?'),
+        content: const Text('Do you want to quit Budgo?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) SystemNavigator.pop();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,105 +46,79 @@ class HomeScreen extends StatelessWidget {
     final color = theme.colorScheme;
     final budget = context.watch<BudgetProvider>().budget;
 
-    return Scaffold(
-      drawer: const AppDrawer(currentRoute: AppRoutes.home),
-      appBar: AppBar(
-        title: const Text("Expense Tracker"),
-        backgroundColor: color.primary,
-        foregroundColor: color.onPrimary,
-        actions: [
-          // IconButton(
-          //   icon: const Icon(Icons.account_balance_wallet_rounded),
-          //   tooltip: 'Set Budget',
-          //   onPressed: () => showDialog(
-          //     context: context,
-          //     builder: (_) => _BudgetDialog(currentBudget: budget),
-          //   ),
-          // ),
-          // IconButton(
-          //   icon: const Icon(Icons.refresh),
-          //   tooltip: 'Reset All',
-          //   onPressed: () => showDialog(
-          //     context: context,
-          //     builder: (_) => _ResetExpensesDialog(
-          //       onReset: () async => Hive.box<Expense>('expenses').clear(),
-          //     ),
-          //   ),
-          // ),
-          IconButton(
-            icon: const Icon(Icons.list),
-            tooltip: 'View All Expenses',
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.expenses),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: color.tertiary,
-        foregroundColor: color.onTertiary,
-        onPressed: () => Navigator.pushNamed(context, '/add-expense'),
-        label: const Text("Add Expense"),
-        icon: const Icon(Icons.add),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ValueListenableBuilder(
-          valueListenable: Hive.box<Expense>('expenses').listenable(),
-          builder: (context, Box<Expense> box, _) {
-            final entries = box.toMap().entries.toList();
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _confirmExit(context);
+      },
+      child: Scaffold(
+        drawer: const AppDrawer(currentRoute: AppRoutes.home),
+        appBar: AppBar(
+          title: const Text("Expense Tracker"),
+          backgroundColor: color.primary,
+          foregroundColor: color.onPrimary,
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: color.tertiary,
+          foregroundColor: color.onTertiary,
+          onPressed: () => Navigator.pushNamed(context, '/add-expense'),
+          label: const Text("Add Expense"),
+          icon: const Icon(Icons.add),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: ValueListenableBuilder(
+            valueListenable: Hive.box<Expense>('expenses').listenable(),
+            builder: (context, Box<Expense> box, _) {
+              final entries = box.toMap().entries.toList();
+              entries.sort((a, b) => b.value.date.compareTo(a.value.date));
 
-            // Sort by date (latest first) for a true "Recent" section.
-            entries.sort((a, b) => b.value.date.compareTo(a.value.date));
+              final totalSpent = entries.fold<double>(
+                0.0,
+                (sum, e) => sum + e.value.amount,
+              );
+              final remaining = budget - totalSpent;
+              final isOverBudget = remaining < 0;
 
-            final totalSpent = entries.fold<double>(
-              0.0,
-              (sum, e) => sum + e.value.amount,
-            );
-            final remaining = budget - totalSpent;
-            final isOverBudget = remaining < 0;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Summary", style: theme.textTheme.titleLarge),
-                const SizedBox(height: 12),
-                _SummarySection(
-                  budget: budget,
-                  spent: totalSpent,
-                  remaining: remaining,
-                  isOverBudget: isOverBudget,
-                ),
-                const SizedBox(height: 12),
-                _BudgetProgressBar(
-                  spent: totalSpent,
-                  budget: budget,
-                ),
-                const SizedBox(height: 24),
-                _SectionHeader(
-                  title: "Recent Expenses",
-                  trailing: TextButton(
-                    onPressed: () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.expenses,
-                    ),
-                    child: const Text("View all"),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Summary", style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  _SummarySection(
+                    budget: budget,
+                    spent: totalSpent,
+                    remaining: remaining,
+                    isOverBudget: isOverBudget,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: entries.isEmpty
-                      ? _EmptyState(
-                          title: "No expenses yet",
-                          subtitle: "Add your first expense to see it here.",
-                          icon: Icons.receipt_long_outlined,
-                        )
-                      : _RecentExpensesList(
-                          entries: entries,
-                          categories: _categories,
-                        ),
-                ),
-              ],
-            );
-          },
+                  const SizedBox(height: 12),
+                  _BudgetProgressBar(spent: totalSpent, budget: budget),
+                  const SizedBox(height: 24),
+                  _SectionHeader(
+                    title: "Recent Expenses",
+                    trailing: TextButton(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, AppRoutes.expenses),
+                      child: const Text("View all"),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: entries.isEmpty
+                        ? _EmptyState(
+                            title: "No expenses yet",
+                            subtitle: "Add your first expense to see it here.",
+                            icon: Icons.receipt_long_outlined,
+                          )
+                        : _RecentExpensesList(
+                            entries: entries,
+                            categories: _categories,
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -166,9 +161,12 @@ class _SummarySection extends StatelessWidget {
         _SummaryCard(
           title: "Remaining",
           value: "₹${remaining.toStringAsFixed(2)}",
-          bgColor: isOverBudget ? color.errorContainer : color.tertiaryContainer,
-          textColor:
-              isOverBudget ? color.onErrorContainer : color.onTertiaryContainer,
+          bgColor: isOverBudget
+              ? color.errorContainer
+              : color.tertiaryContainer,
+          textColor: isOverBudget
+              ? color.onErrorContainer
+              : color.onTertiaryContainer,
         ),
       ],
     );
@@ -245,17 +243,13 @@ class _RecentExpensesList extends StatelessWidget {
   final List<MapEntry<dynamic, Expense>> entries;
   final List<String> categories;
 
-  const _RecentExpensesList({
-    required this.entries,
-    required this.categories,
-  });
+  const _RecentExpensesList({required this.entries, required this.categories});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme;
 
-    // Show only recent N here (keeps Home lightweight).
     final visible = entries.take(12).toList();
 
     return ListView.separated(
@@ -268,7 +262,9 @@ class _RecentExpensesList extends StatelessWidget {
 
         return Card(
           color: color.surfaceContainerHigh,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ListTile(
             title: Text(exp.productName, style: theme.textTheme.bodyLarge),
             subtitle: Text(
@@ -397,83 +393,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// class _BudgetDialog extends StatelessWidget {
-//   final double currentBudget;
-//   const _BudgetDialog({required this.currentBudget});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final controller = TextEditingController(
-//       text: currentBudget.toStringAsFixed(2),
-//     );
-//     final color = Theme.of(context).colorScheme;
-
-//     return AlertDialog(
-//       title: const Text('Set Overall Budget'),
-//       content: TextField(
-//         controller: controller,
-//         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-//         decoration: const InputDecoration(
-//           labelText: 'Budget (₹)',
-//           border: OutlineInputBorder(),
-//         ),
-//       ),
-//       actions: [
-//         TextButton(
-//           onPressed: () => Navigator.pop(context),
-//           child: const Text('Cancel'),
-//         ),
-//         ElevatedButton(
-//           style: ElevatedButton.styleFrom(
-//             backgroundColor: color.primary,
-//             foregroundColor: color.onPrimary,
-//           ),
-//           onPressed: () {
-//             final value = double.tryParse(controller.text.trim());
-//             if (value != null && value > 0) {
-//               context.read<BudgetProvider>().setBudget(value);
-//               Navigator.pop(context);
-//             }
-//           },
-//           child: const Text('Save'),
-//         ),
-//       ],
-//     );
-//   }
-// }
-
-// class _ResetExpensesDialog extends StatelessWidget {
-//   final Future<void> Function() onReset;
-
-//   const _ResetExpensesDialog({required this.onReset});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final color = Theme.of(context).colorScheme;
-//     return AlertDialog(
-//       title: const Text("Confirm Reset"),
-//       content: const Text("Are you sure you want to delete all expenses?"),
-//       actions: [
-//         TextButton(
-//           onPressed: () => Navigator.pop(context),
-//           child: const Text("Cancel"),
-//         ),
-//         ElevatedButton(
-//           style: ElevatedButton.styleFrom(
-//             backgroundColor: color.error,
-//             foregroundColor: color.onError,
-//           ),
-//           onPressed: () async {
-//             await onReset();
-//             if (context.mounted) Navigator.pop(context, true);
-//           },
-//           child: const Text("Reset"),
-//         ),
-//       ],
-//     );
-//   }
-// }
-
 class _ConfirmDeleteDialog extends StatelessWidget {
   const _ConfirmDeleteDialog();
 
@@ -569,7 +488,9 @@ class _ExpenseEditDialogState extends State<_ExpenseEditDialog> {
             const SizedBox(height: 10),
             TextField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(labelText: 'Amount (₹)'),
             ),
             const SizedBox(height: 10),

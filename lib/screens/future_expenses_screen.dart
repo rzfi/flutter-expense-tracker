@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 
 class FutureExpensesScreen extends StatelessWidget {
   const FutureExpensesScreen({super.key});
+  void _goHome(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,57 +21,63 @@ class FutureExpensesScreen extends StatelessWidget {
     final planned = wishlist.planned;
     final purchased = wishlist.purchased;
 
-    return Scaffold(
-      drawer: const AppDrawer(currentRoute: AppRoutes.futureExpenses),
-      appBar: AppBar(
-        title: const Text('Future Expenses'),
-        backgroundColor: color.primary,
-        foregroundColor: color.onPrimary,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: color.tertiary,
-        foregroundColor: color.onTertiary,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Item'),
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          showDragHandle: true,
-          builder: (_) => const _AddFutureExpenseSheet(),
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _goHome(context);
+      },
+      child: Scaffold(
+        drawer: const AppDrawer(currentRoute: AppRoutes.futureExpenses),
+        appBar: AppBar(
+          title: const Text('Future Expenses'),
+          backgroundColor: color.primary,
+          foregroundColor: color.onPrimary,
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _WishlistSummaryCard(
-            plannedCount: planned.length,
-            purchasedCount: purchased.length,
-            plannedEstimatedTotal: wishlist.totalPlannedEstimated,
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: color.tertiary,
+          foregroundColor: color.onTertiary,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Item'),
+          onPressed: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            showDragHandle: true,
+            builder: (_) => const _AddFutureExpenseSheet(),
           ),
-          const SizedBox(height: 16),
-          Text('Planned', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (planned.isEmpty)
-            const _EmptyBlock(
-              icon: Icons.shopping_bag_outlined,
-              title: 'No planned items',
-              subtitle: 'Add future purchases to track priorities and costs.',
-            )
-          else
-            ...planned.map((e) => _FutureExpenseTile(item: e)),
-          const SizedBox(height: 20),
-          Text('Purchased', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (purchased.isEmpty)
-            const _EmptyBlock(
-              icon: Icons.check_circle_outline,
-              title: 'No purchased items',
-              subtitle: 'Mark an item as purchased to move it here.',
-            )
-          else
-            ...purchased.map((e) => _FutureExpenseTile(item: e)),
-          const SizedBox(height: 80),
-        ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _WishlistSummaryCard(
+              plannedCount: planned.length,
+              purchasedCount: purchased.length,
+              plannedEstimatedTotal: wishlist.totalPlannedEstimated,
+            ),
+            const SizedBox(height: 16),
+            Text('Planned', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (planned.isEmpty)
+              const _EmptyBlock(
+                icon: Icons.shopping_bag_outlined,
+                title: 'No planned items',
+                subtitle: 'Add future purchases to track priorities and costs.',
+              )
+            else
+              ...planned.map((e) => _FutureExpenseTile(item: e)),
+            const SizedBox(height: 20),
+            Text('Purchased', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (purchased.isEmpty)
+              const _EmptyBlock(
+                icon: Icons.check_circle_outline,
+                title: 'No purchased items',
+                subtitle: 'Mark an item as purchased to move it here.',
+              )
+            else
+              ...purchased.map((e) => _FutureExpenseTile(item: e)),
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
     );
   }
@@ -215,7 +224,9 @@ class _FutureExpenseTile extends StatelessWidget {
           itemBuilder: (_) => [
             PopupMenuItem(
               value: 'toggle',
-              child: Text(item.isPurchased ? 'Mark as planned' : 'Mark as purchased'),
+              child: Text(
+                item.isPurchased ? 'Mark as planned' : 'Mark as purchased',
+              ),
             ),
             const PopupMenuItem(value: 'delete', child: Text('Delete')),
           ],
@@ -226,7 +237,7 @@ class _FutureExpenseTile extends StatelessWidget {
 }
 
 class _PriorityDot extends StatelessWidget {
-  final int priority; // 1 low, 2 med, 3 high
+  final int priority;
   const _PriorityDot({required this.priority});
 
   @override
@@ -241,10 +252,7 @@ class _PriorityDot extends StatelessWidget {
     return Container(
       width: 14,
       height: 14,
-      decoration: BoxDecoration(
-        color: dot,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
     );
   }
 }
@@ -321,7 +329,10 @@ class _AddFutureExpenseSheetState extends State<_AddFutureExpenseSheet> {
           shrinkWrap: true,
           children: [
             const SizedBox(height: 8),
-            Text('Add future expense', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Add future expense',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 14),
 
             TextFormField(
@@ -337,7 +348,9 @@ class _AddFutureExpenseSheetState extends State<_AddFutureExpenseSheet> {
 
             TextFormField(
               controller: _cost,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Estimated cost (optional)',
                 border: OutlineInputBorder(),
@@ -380,9 +393,11 @@ class _AddFutureExpenseSheetState extends State<_AddFutureExpenseSheet> {
             OutlinedButton.icon(
               onPressed: _pickDueDate,
               icon: const Icon(Icons.event_outlined),
-              label: Text(_dueDate == null
-                  ? 'Pick due date (optional)'
-                  : 'Due: ${DateFormat.yMMMd().format(_dueDate!)}'),
+              label: Text(
+                _dueDate == null
+                    ? 'Pick due date (optional)'
+                    : 'Due: ${DateFormat.yMMMd().format(_dueDate!)}',
+              ),
             ),
             const SizedBox(height: 12),
 

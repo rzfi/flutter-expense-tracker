@@ -1,3 +1,4 @@
+import 'package:expense/navigation/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -6,6 +7,9 @@ import 'package:expense/models/expense.dart';
 
 class ExpenseListScreen extends StatelessWidget {
   const ExpenseListScreen({super.key});
+  void _goHome(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,129 +17,152 @@ class ExpenseListScreen extends StatelessWidget {
     final color = theme.colorScheme;
     final box = Hive.box<Expense>('expenses');
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("All Expenses"),
-        backgroundColor: color.primary,
-        foregroundColor: color.onPrimary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pushReplacementNamed('/home'),
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _goHome(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("All Expenses"),
+          backgroundColor: color.primary,
+          foregroundColor: color.onPrimary,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () =>
+                Navigator.of(context).pushReplacementNamed('/home'),
+          ),
         ),
-      ),
-      body: ValueListenableBuilder(
-        valueListenable: box.listenable(),
-        builder: (context, Box<Expense> box, _) {
-          final expenses = box.values.toList().reversed.toList();
+        body: ValueListenableBuilder(
+          valueListenable: box.listenable(),
+          builder: (context, Box<Expense> box, _) {
+            final expenses = box.values.toList().reversed.toList();
 
-          final Map<String, double> categoryTotals = {};
-          double totalAmount = 0.0;
+            final Map<String, double> categoryTotals = {};
+            double totalAmount = 0.0;
 
-          for (var exp in expenses) {
-            totalAmount += exp.amount;
-            categoryTotals.update(
-              exp.category,
-              (value) => value + exp.amount,
-              ifAbsent: () => exp.amount,
-            );
-          }
+            for (var exp in expenses) {
+              totalAmount += exp.amount;
+              categoryTotals.update(
+                exp.category,
+                (value) => value + exp.amount,
+                ifAbsent: () => exp.amount,
+              );
+            }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Total Spent: ₹${totalAmount.toStringAsFixed(2)}",
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-
-                // Chart Section
-                if (categoryTotals.isNotEmpty) ...[
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    "📊 Expense by Category",
-                    style: theme.textTheme.titleMedium,
+                    "Total Spent: ₹${totalAmount.toStringAsFixed(2)}",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: color.onSurface, // or color.onSurfaceVariant
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  AspectRatio(
-                    aspectRatio: 1.3,
-                    child: PieChart(
-                      PieChartData(
-                        sections: _generateChartSections(
-                          categoryTotals,
-                          totalAmount,
-                          color,
-                          theme,
-                        ),
-                        centerSpaceRadius: 30,
-                        sectionsSpace: 2,
-                        borderData: FlBorderData(show: false),
+                  const SizedBox(height: 12),
+
+                  // Chart Section
+                  if (categoryTotals.isNotEmpty) ...[
+                    Text(
+                      "📊 Expense by Category",
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: color.onSurface, // or color.onSurfaceVariant
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Expense List Section
-                Text("📅 Expenses List", style: theme.textTheme.titleMedium),
-                const SizedBox(height: 12),
-
-                if (expenses.isEmpty)
-                  Center(
-                    child: Text(
-                      "No expenses found.",
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                  )
-                else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: expenses.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final exp = expenses[index];
-                      return Card(
-                        elevation: 1,
-                        color: color.surfaceContainerHigh,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    const SizedBox(height: 8),
+                    AspectRatio(
+                      aspectRatio: 1.3,
+                      child: PieChart(
+                        PieChartData(
+                          sections: _generateChartSections(
+                            categoryTotals,
+                            totalAmount,
+                            color,
+                            theme,
+                          ),
+                          centerSpaceRadius: 30,
+                          sectionsSpace: 2,
+                          borderData: FlBorderData(show: false),
                         ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: color.secondaryContainer,
-                            foregroundColor: color.onSecondaryContainer,
-                            child: Text(
-                              exp.category[0].toUpperCase(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  Text(
+                    "📅 Expenses List",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: color.onSurface, // or color.onSurfaceVariant
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (expenses.isEmpty)
+                    Center(
+                      child: Text(
+                        "No expenses found.",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: color.onSurface, // or color.onSurfaceVariant
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: expenses.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final exp = expenses[index];
+                        return Card(
+                          elevation: 1,
+                          color: color.surfaceContainerHigh,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: color.secondaryContainer,
+                              foregroundColor: color.onSecondaryContainer,
+                              child: Text(
+                                exp.category[0].toUpperCase(),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: color.onSecondaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              exp.productName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: color.onSurface,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "${exp.category} • ${DateFormat.yMMMd().format(exp.date)}",
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: color.onSurface,
+                              ),
+                            ),
+                            trailing: Text(
+                              "₹${exp.amount.toStringAsFixed(2)}",
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: color.onSurface,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                          title: Text(
-                            exp.productName,
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          subtitle: Text(
-                            "${exp.category} • ${DateFormat.yMMMd().format(exp.date)}",
-                          ),
-                          trailing: Text(
-                            "₹${exp.amount.toStringAsFixed(2)}",
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
 
-                const SizedBox(height: 32),
-              ],
-            ),
-          );
-        },
+                  const SizedBox(height: 32),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -170,7 +197,7 @@ class ExpenseListScreen extends StatelessWidget {
           value: amount,
           radius: 60,
           titleStyle: theme.textTheme.bodySmall?.copyWith(
-            color: color.onPrimaryContainer,
+            color: Colors.black87,
             fontWeight: FontWeight.w600,
           ),
           color: sectionColor,

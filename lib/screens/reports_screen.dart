@@ -46,10 +46,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   List<Expense> _expensesInRange(List<Expense> all) {
-    final start = DateTime(_range.start.year, _range.start.month, _range.start.day);
-    final end = DateTime(_range.end.year, _range.end.month, _range.end.day, 23, 59, 59);
+    final start = DateTime(
+      _range.start.year,
+      _range.start.month,
+      _range.start.day,
+    );
+    final end = DateTime(
+      _range.end.year,
+      _range.end.month,
+      _range.end.day,
+      23,
+      59,
+      59,
+    );
 
-    final filtered = all.where((e) => !e.date.isBefore(start) && !e.date.isAfter(end)).toList();
+    final filtered = all
+        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
+        .toList();
     filtered.sort((a, b) => b.date.compareTo(a.date));
     return filtered;
   }
@@ -63,7 +76,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   List<_TimePoint> _timeSeries(List<Expense> expenses) {
-    // Auto switch to weekly buckets for long ranges.
     final days = _range.duration.inDays + 1;
     final weekly = days > 35;
 
@@ -82,20 +94,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     final keys = buckets.keys.toList()..sort();
     final labelFmt = weekly ? DateFormat('MMM d') : DateFormat('d MMM');
-
-    // Keep chart readable.
     final maxBars = weekly ? 12 : 14;
-    final trimmed = keys.length > maxBars ? keys.sublist(keys.length - maxBars) : keys;
+    final trimmed = keys.length > maxBars
+        ? keys.sublist(keys.length - maxBars)
+        : keys;
 
     return trimmed
-        .map((k) => _TimePoint(label: labelFmt.format(k), value: buckets[k] ?? 0))
+        .map(
+          (k) => _TimePoint(label: labelFmt.format(k), value: buckets[k] ?? 0),
+        )
         .toList();
   }
 
   Future<void> _showExportSheet(List<Expense> filtered) async {
     final dateFmt = DateFormat('yyyy-MM-dd');
     final title = 'Expenses report';
-    final fileBase = 'expenses_${dateFmt.format(_range.start)}_${dateFmt.format(_range.end)}';
+    final fileBase =
+        'expenses_${dateFmt.format(_range.start)}_${dateFmt.format(_range.end)}';
 
     await showModalBottomSheet(
       context: context,
@@ -111,7 +126,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ListTile(
                   leading: const Icon(Icons.table_view_outlined),
                   title: const Text('Export CSV'),
-                  subtitle: const Text('Share a CSV file (best for full data).'),
+                  subtitle: const Text(
+                    'Share a CSV file (best for full data).',
+                  ),
                   onTap: () async {
                     Navigator.pop(ctx);
                     final file = await ReportExportService.exportExpensesCsv(
@@ -130,17 +147,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     final bytes = await ReportExportService.buildExpensesPdfBytes(
                       expenses: filtered,
                       range: _range,
-                      title: '$title (${dateFmt.format(_range.start)} → ${dateFmt.format(_range.end)})',
+                      title:
+                          '$title (${dateFmt.format(_range.start)} → ${dateFmt.format(_range.end)})',
                     );
-                    await Printing.sharePdf(bytes: bytes, filename: '$fileBase.pdf');
+                    await Printing.sharePdf(
+                      bytes: bytes,
+                      filename: '$fileBase.pdf',
+                    );
                   },
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Tip: PDF shows up to 200 rows for readability; CSV exports everything.',
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                        color: color.onSurfaceVariant,
-                      ),
+                    color: color.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -168,91 +189,116 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final categoryTotals = _categoryTotals(filtered);
     final topCategory = categoryTotals.entries.isEmpty
         ? null
-        : (categoryTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).first;
+        : (categoryTotals.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value)))
+              .first;
 
     final timeSeries = _timeSeries(filtered);
+    void _goHome(BuildContext context) {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+    }
 
-    return Scaffold(
-      drawer: const AppDrawer(currentRoute: AppRoutes.reports),
-      appBar: AppBar(
-        title: const Text('Reports'),
-        backgroundColor: color.primary,
-        foregroundColor: color.onPrimary,
-        actions: [
-          IconButton(
-            tooltip: 'Pick date range',
-            icon: const Icon(Icons.date_range_outlined),
-            onPressed: _pickCustomRange,
-          ),
-          IconButton(
-            tooltip: 'Export',
-            icon: const Icon(Icons.download_outlined),
-            onPressed: () => _showExportSheet(filtered),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _RangeSelector(
-            preset: _preset,
-            range: _range,
-            onPreset: (p) => setState(() {
-              _preset = p;
-              _range = p.toRange(DateTime.now());
-            }),
-            onCustom: _pickCustomRange,
-          ),
-          const SizedBox(height: 12),
-
-          _KpiRow(
-            kpis: [
-              _Kpi(title: 'Total spent', value: currency.format(total), kind: _KpiKind.primary),
-              _Kpi(title: 'Transactions', value: '$count', kind: _KpiKind.secondary),
-              _Kpi(title: 'Avg/expense', value: currency.format(avg), kind: _KpiKind.tertiary),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          _InsightCard(
-            title: 'Top category',
-            icon: Icons.local_offer_outlined,
-            child: Text(
-              topCategory == null
-                  ? 'No data in this range.'
-                  : '${topCategory.key} • ${currency.format(topCategory.value)}',
-              style: theme.textTheme.titleMedium,
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _goHome(context);
+      },
+      child: Scaffold(
+        drawer: const AppDrawer(currentRoute: AppRoutes.reports),
+        appBar: AppBar(
+          title: const Text('Reports'),
+          backgroundColor: color.primary,
+          foregroundColor: color.onPrimary,
+          actions: [
+            IconButton(
+              tooltip: 'Pick date range',
+              icon: const Icon(Icons.date_range_outlined),
+              onPressed: _pickCustomRange,
             ),
-          ),
-          const SizedBox(height: 12),
+            IconButton(
+              tooltip: 'Export',
+              icon: const Icon(Icons.download_outlined),
+              onPressed: () => _showExportSheet(filtered),
+            ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _RangeSelector(
+              preset: _preset,
+              range: _range,
+              onPreset: (p) => setState(() {
+                _preset = p;
+                _range = p.toRange(DateTime.now());
+              }),
+              onCustom: _pickCustomRange,
+            ),
+            const SizedBox(height: 12),
 
-          _InsightCard(
-            title: 'Spending trend',
-            icon: Icons.bar_chart_outlined,
-            child: timeSeries.isEmpty
-                ? const _EmptyChartHint()
-                : _BarChartCard(points: timeSeries),
-          ),
-          const SizedBox(height: 12),
+            _KpiRow(
+              kpis: [
+                _Kpi(
+                  title: 'Total spent',
+                  value: currency.format(total),
+                  kind: _KpiKind.primary,
+                ),
+                _Kpi(
+                  title: 'Transactions',
+                  value: '$count',
+                  kind: _KpiKind.secondary,
+                ),
+                _Kpi(
+                  title: 'Avg/expense',
+                  value: currency.format(avg),
+                  kind: _KpiKind.tertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
 
-          _InsightCard(
-            title: 'Category split',
-            icon: Icons.pie_chart_outline,
-            child: categoryTotals.isEmpty
-                ? const _EmptyChartHint()
-                : _CategoryPieCard(categoryTotals: categoryTotals),
-          ),
-          const SizedBox(height: 12),
+            _InsightCard(
+              title: 'Top category',
+              icon: Icons.local_offer_outlined,
+              child: Text(
+                topCategory == null
+                    ? 'No data in this range.'
+                    : '${topCategory.key} • ${currency.format(topCategory.value)}',
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(height: 12),
 
-          _InsightCard(
-            title: 'Top expenses',
-            icon: Icons.receipt_long_outlined,
-            child: filtered.isEmpty
-                ? const _EmptyChartHint(message: 'No expenses in selected range.')
-                : _TopExpensesList(expenses: filtered.take(8).toList()),
-          ),
-          const SizedBox(height: 24),
-        ],
+            _InsightCard(
+              title: 'Spending trend',
+              icon: Icons.bar_chart_outlined,
+              child: timeSeries.isEmpty
+                  ? const _EmptyChartHint()
+                  : _BarChartCard(points: timeSeries),
+            ),
+            const SizedBox(height: 12),
+
+            _InsightCard(
+              title: 'Category split',
+              icon: Icons.pie_chart_outline,
+              child: categoryTotals.isEmpty
+                  ? const _EmptyChartHint()
+                  : _CategoryPieCard(categoryTotals: categoryTotals),
+            ),
+            const SizedBox(height: 12),
+
+            _InsightCard(
+              title: 'Top expenses',
+              icon: Icons.receipt_long_outlined,
+              child: filtered.isEmpty
+                  ? const _EmptyChartHint(
+                      message: 'No expenses in selected range.',
+                    )
+                  : _TopExpensesList(expenses: filtered.take(8).toList()),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -262,11 +308,11 @@ enum _RangePreset { thisWeek, thisMonth, last30Days, custom }
 
 extension on _RangePreset {
   String get label => switch (this) {
-        _RangePreset.thisWeek => 'This week',
-        _RangePreset.thisMonth => 'This month',
-        _RangePreset.last30Days => 'Last 30 days',
-        _RangePreset.custom => 'Custom',
-      };
+    _RangePreset.thisWeek => 'This week',
+    _RangePreset.thisMonth => 'This month',
+    _RangePreset.last30Days => 'Last 30 days',
+    _RangePreset.custom => 'Custom',
+  };
 
   DateTimeRange toRange(DateTime now) {
     DateTime startOfWeekMonday(DateTime d) {
@@ -281,7 +327,9 @@ extension on _RangePreset {
         return DateTimeRange(start: start, end: end);
       case _RangePreset.thisMonth:
         final start = DateTime(now.year, now.month, 1);
-        final nextMonth = (now.month == 12) ? DateTime(now.year + 1, 1, 1) : DateTime(now.year, now.month + 1, 1);
+        final nextMonth = (now.month == 12)
+            ? DateTime(now.year + 1, 1, 1)
+            : DateTime(now.year, now.month + 1, 1);
         final end = nextMonth.subtract(const Duration(days: 1));
         return DateTimeRange(start: start, end: end);
       case _RangePreset.last30Days:
@@ -290,7 +338,10 @@ extension on _RangePreset {
         return DateTimeRange(start: start, end: end);
       case _RangePreset.custom:
         // Caller will set it.
-        return DateTimeRange(start: DateTime(now.year, now.month, 1), end: DateTime(now.year, now.month, now.day));
+        return DateTimeRange(
+          start: DateTime(now.year, now.month, 1),
+          end: DateTime(now.year, now.month, now.day),
+        );
     }
   }
 }
@@ -325,16 +376,17 @@ class _RangeSelector extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final p in [_RangePreset.thisWeek, _RangePreset.thisMonth, _RangePreset.last30Days])
+                for (final p in [
+                  _RangePreset.thisWeek,
+                  _RangePreset.thisMonth,
+                  _RangePreset.last30Days,
+                ])
                   ChoiceChip(
                     label: Text(p.label),
                     selected: preset == p,
                     onSelected: (_) => onPreset(p),
                   ),
-                ActionChip(
-                  label: const Text('Custom'),
-                  onPressed: onCustom,
-                ),
+                ActionChip(label: const Text('Custom'), onPressed: onCustom),
               ],
             ),
             const SizedBox(height: 10),
@@ -368,16 +420,16 @@ class _KpiRow extends StatelessWidget {
     final c = Theme.of(context).colorScheme;
 
     Color bg(_KpiKind k) => switch (k) {
-          _KpiKind.primary => c.primaryContainer,
-          _KpiKind.secondary => c.secondaryContainer,
-          _KpiKind.tertiary => c.tertiaryContainer,
-        };
+      _KpiKind.primary => c.primaryContainer,
+      _KpiKind.secondary => c.secondaryContainer,
+      _KpiKind.tertiary => c.tertiaryContainer,
+    };
 
     Color fg(_KpiKind k) => switch (k) {
-          _KpiKind.primary => c.onPrimaryContainer,
-          _KpiKind.secondary => c.onSecondaryContainer,
-          _KpiKind.tertiary => c.onTertiaryContainer,
-        };
+      _KpiKind.primary => c.onPrimaryContainer,
+      _KpiKind.secondary => c.onSecondaryContainer,
+      _KpiKind.tertiary => c.onTertiaryContainer,
+    };
 
     return Row(
       children: [
@@ -391,13 +443,23 @@ class _KpiRow extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Text(kpis[i].title, style: TextStyle(color: fg(kpis[i].kind), fontWeight: FontWeight.w600)),
+                  Text(
+                    kpis[i].title,
+                    style: TextStyle(
+                      color: fg(kpis[i].kind),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     kpis[i].value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: fg(kpis[i].kind), fontWeight: FontWeight.w800, fontSize: 18),
+                    style: TextStyle(
+                      color: fg(kpis[i].kind),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                    ),
                   ),
                 ],
               ),
@@ -415,7 +477,11 @@ class _InsightCard extends StatelessWidget {
   final IconData icon;
   final Widget child;
 
-  const _InsightCard({required this.title, required this.icon, required this.child});
+  const _InsightCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -473,7 +539,9 @@ class _BarChartCard extends StatelessWidget {
     final theme = Theme.of(context);
     final c = Theme.of(context).colorScheme;
 
-    final maxY = points.isEmpty ? 0 : points.map((e) => e.value).reduce(math.max);
+    final maxY = points.isEmpty
+        ? 0
+        : points.map((e) => e.value).reduce(math.max);
     final roundedMaxY = (maxY <= 0) ? 10.0 : (maxY * 1.25);
 
     return SizedBox(
@@ -484,13 +552,20 @@ class _BarChartCard extends StatelessWidget {
           gridData: FlGridData(show: true),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 42,
-                getTitlesWidget: (v, meta) => Text(v.toStringAsFixed(0), style: theme.textTheme.bodySmall),
+                getTitlesWidget: (v, meta) => Text(
+                  v.toStringAsFixed(0),
+                  style: theme.textTheme.bodySmall,
+                ),
               ),
             ),
             bottomTitles: AxisTitles(
@@ -500,11 +575,15 @@ class _BarChartCard extends StatelessWidget {
                 interval: 1,
                 getTitlesWidget: (v, meta) {
                   final i = v.toInt();
-                  if (i < 0 || i >= points.length) return const SizedBox.shrink();
+                  if (i < 0 || i >= points.length)
+                    return const SizedBox.shrink();
                   return SideTitleWidget(
                     meta: meta,
                     space: 8,
-                    child: Text(points[i].label, style: theme.textTheme.bodySmall),
+                    child: Text(
+                      points[i].label,
+                      style: theme.textTheme.bodySmall,
+                    ),
                   );
                 },
               ),
@@ -538,7 +617,8 @@ class _CategoryPieCard extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final c = Theme.of(context).colorScheme;
 
-    final entries = categoryTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final entries = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     final total = entries.fold<double>(0, (s, e) => s + e.value);
     if (total <= 0) return const _EmptyChartHint();
 
@@ -577,7 +657,10 @@ class _CategoryPieCard extends StatelessWidget {
                   title: pct >= 12 ? '${pct.toStringAsFixed(0)}%' : '',
                   radius: 56,
                   color: palette[i % palette.length],
-                  titleStyle: theme.labelLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                  titleStyle: theme.labelLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 );
               }),
             ),
@@ -635,8 +718,13 @@ class _TopExpensesList extends StatelessWidget {
           dense: true,
           contentPadding: EdgeInsets.zero,
           title: Text(e.productName, style: theme.textTheme.bodyLarge),
-          subtitle: Text('${e.category} • ${DateFormat.yMMMd().format(e.date)}'),
-          trailing: Text(currency.format(e.amount), style: theme.textTheme.titleSmall),
+          subtitle: Text(
+            '${e.category} • ${DateFormat.yMMMd().format(e.date)}',
+          ),
+          trailing: Text(
+            currency.format(e.amount),
+            style: theme.textTheme.titleSmall,
+          ),
         );
       }).toList(),
     );

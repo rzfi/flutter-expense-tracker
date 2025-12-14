@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 
 class IncomeScreen extends StatelessWidget {
   const IncomeScreen({super.key});
+  void _goHome(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+  }
 
   static const List<String> _sources = <String>[
     'Salary',
@@ -24,42 +27,48 @@ class IncomeScreen extends StatelessWidget {
     final incomeProvider = context.watch<IncomeProvider>();
     final items = incomeProvider.items;
 
-    return Scaffold(
-      drawer: const AppDrawer(currentRoute: AppRoutes.income),
-      appBar: AppBar(
-        title: const Text('Income'),
-        backgroundColor: color.primary,
-        foregroundColor: color.onPrimary,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: color.tertiary,
-        foregroundColor: color.onTertiary,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Income'),
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          showDragHandle: true,
-          builder: (_) => const _AddIncomeSheet(),
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _goHome(context);
+      },
+      child: Scaffold(
+        drawer: const AppDrawer(currentRoute: AppRoutes.income),
+        appBar: AppBar(
+          title: const Text('Income'),
+          backgroundColor: color.primary,
+          foregroundColor: color.onPrimary,
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _IncomeSummaryCard(
-            totalConfirmed: incomeProvider.totalConfirmed,
-            totalAll: incomeProvider.totalAll,
-            pendingCount: items.where((i) => !i.isConfirmed).length,
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: color.tertiary,
+          foregroundColor: color.onTertiary,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Income'),
+          onPressed: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            showDragHandle: true,
+            builder: (_) => const _AddIncomeSheet(),
           ),
-          const SizedBox(height: 16),
-          Text('History', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (items.isEmpty)
-            const _EmptyIncome()
-          else
-            ...items.map((inc) => _IncomeTile(income: inc)),
-          const SizedBox(height: 80),
-        ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _IncomeSummaryCard(
+              totalConfirmed: incomeProvider.totalConfirmed,
+              totalAll: incomeProvider.totalAll,
+              pendingCount: items.where((i) => !i.isConfirmed).length,
+            ),
+            const SizedBox(height: 16),
+            Text('History', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (items.isEmpty)
+              const _EmptyIncome()
+            else
+              ...items.map((inc) => _IncomeTile(income: inc)),
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
     );
   }
@@ -150,7 +159,10 @@ class _StatPill extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         children: [
           Text(title, style: theme.textTheme.labelLarge?.copyWith(color: fg)),
@@ -193,13 +205,17 @@ class _IncomeTile extends StatelessWidget {
     final color = theme.colorScheme;
 
     final dateText = DateFormat.yMMMd().format(income.date);
-    final statusText = income.isConfirmed ? 'Confirmed' : 'Pending confirmation';
+    final statusText = income.isConfirmed
+        ? 'Confirmed'
+        : 'Pending confirmation';
 
     return Card(
       color: color.surfaceContainerHigh,
       child: ListTile(
         title: Text('${income.source} • ₹${income.amount.toStringAsFixed(0)}'),
-        subtitle: Text('$dateText • $statusText${income.description?.isNotEmpty == true ? ' • ${income.description}' : ''}'),
+        subtitle: Text(
+          '$dateText • $statusText${income.description?.isNotEmpty == true ? ' • ${income.description}' : ''}',
+        ),
         leading: Icon(
           income.isConfirmed ? Icons.verified_outlined : Icons.hourglass_bottom,
           color: income.isConfirmed ? color.primary : color.tertiary,
@@ -273,13 +289,14 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
       builder: (_) => const _ConfirmIncomeDialog(),
     );
 
-    // Always store as draft first; confirm decides if it counts in budget.
     final draft = Income(
       id: id,
       source: _source,
       amount: amount,
       date: _date,
-      description: _description.text.trim().isEmpty ? null : _description.text.trim(),
+      description: _description.text.trim().isEmpty
+          ? null
+          : _description.text.trim(),
       isConfirmed: false,
     );
 
@@ -326,7 +343,9 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
 
             TextFormField(
               controller: _amount,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Amount (₹)',
                 border: OutlineInputBorder(),
@@ -456,8 +475,10 @@ class _EmptyIncome extends StatelessWidget {
                 children: [
                   Text('No income added', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 4),
-                  Text('Tap “Add Income” to create your first entry.',
-                      style: theme.textTheme.bodyMedium),
+                  Text(
+                    'Tap “Add Income” to create your first entry.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
                 ],
               ),
             ),

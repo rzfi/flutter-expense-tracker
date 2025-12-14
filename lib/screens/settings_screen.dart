@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+  void _goHome(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+  }
 
   Future<void> _showResetDialog(BuildContext context) async {
     final color = Theme.of(context).colorScheme;
@@ -49,61 +52,68 @@ class SettingsScreen extends StatelessWidget {
     final color = theme.colorScheme;
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDarkMode;
-    return Scaffold(
-      drawer: const AppDrawer(currentRoute: AppRoutes.settings),
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: color.primary,
-        foregroundColor: color.onPrimary,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('General', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-
-          // Appearance / Theme toggle
-          Card(
-            color: color.surfaceContainerHigh,
-            child: SwitchListTile.adaptive(
-              secondary: Icon(
-                isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-              ),
-              title: Text(isDark ? 'Dark mode' : 'Light mode'),
-              subtitle: Text( isDark ? 'Enabled' : 'Enabled', style: theme.textTheme.bodySmall,),
-              // subtitle: Text(isDark ? 'On' : 'Off', style: theme.textTheme.bodySmall),
-              value: isDark,
-              onChanged: (_) => context.read<ThemeProvider>().toggleTheme(),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text('Danger Zone', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            color: color.tertiaryContainer,
-            child: ListTile(
-              leading: Icon(
-                Icons.delete_forever,
-                color: color.onTertiaryContainer,
-              ),
-              title: Text(
-                'Reset all expenses',
-                style: TextStyle(color: color.onTertiaryContainer),
-              ),
-              subtitle: Text(
-                'Deletes all expense records from this device.',
-                style: TextStyle(
-                  color: color.onTertiaryContainer.withOpacity(0.9),
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _goHome(context);
+      },
+      child: Scaffold(
+        drawer: const AppDrawer(currentRoute: AppRoutes.settings),
+        appBar: AppBar(
+          title: const Text('Settings'),
+          backgroundColor: color.primary,
+          foregroundColor: color.onPrimary,
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('General', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Card(
+              color: color.surfaceContainerHigh,
+              child: SwitchListTile.adaptive(
+                secondary: Icon(
+                  isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
                 ),
+                title: Text(isDark ? 'Dark mode' : 'Light mode'),
+                subtitle: Text(
+                  isDark ? 'Enabled' : 'Enabled',
+                  style: theme.textTheme.bodySmall,
+                ),
+                // subtitle: Text(isDark ? 'On' : 'Off', style: theme.textTheme.bodySmall),
+                value: isDark,
+                onChanged: (_) => context.read<ThemeProvider>().toggleTheme(),
               ),
-              trailing: Icon(
-                Icons.chevron_right,
-                color: color.onTertiaryContainer,
-              ),
-              onTap: () => _showResetDialog(context),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text('Danger Zone', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Card(
+              color: color.tertiaryContainer,
+              child: ListTile(
+                leading: Icon(
+                  Icons.delete_forever,
+                  color: color.onTertiaryContainer,
+                ),
+                title: Text(
+                  'Reset all expenses',
+                  style: TextStyle(color: color.onTertiaryContainer),
+                ),
+                subtitle: Text(
+                  'Deletes all expense records from this device.',
+                  style: TextStyle(
+                    color: color.onTertiaryContainer.withOpacity(0.9),
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: color.onTertiaryContainer,
+                ),
+                onTap: () => _showResetDialog(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

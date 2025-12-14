@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart';
-// import 'package:parenting/themes/theme.dart';
-// import 'package:parenting/provider/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -49,11 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/icon/app_icon.png', // Make sure this path matches your asset location
-                width: 100,
-                height: 100,
-              ),
+              Image.asset('assets/icon/app_icon.png', width: 100, height: 100),
               const SizedBox(height: 20),
               Text(
                 "Budgo",

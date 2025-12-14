@@ -50,7 +50,6 @@ class ReportExportService {
     final total = expenses.fold<double>(0, (s, e) => s + e.amount);
     final avg = expenses.isEmpty ? 0 : total / expenses.length;
 
-    // Keep PDF readable: show all if small, else cap to 200 rows.
     final rows = expenses
         .take(200)
         .map((e) => [

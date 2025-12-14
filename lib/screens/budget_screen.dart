@@ -9,6 +9,10 @@ import 'package:provider/provider.dart';
 class BudgetScreen extends StatelessWidget {
   const BudgetScreen({super.key});
 
+  void _goHome(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -20,73 +24,81 @@ class BudgetScreen extends StatelessWidget {
     final active = budgetProvider.activeBudget;
     final spent = budgetProvider.spentInActivePeriod(expensesProvider);
     final remaining = (active == null) ? 0.0 : (active.limit - spent);
-    final ratio = (active == null || active.limit <= 0) ? 0.0 : (spent / active.limit);
+    final ratio = (active == null || active.limit <= 0)
+        ? 0.0
+        : (spent / active.limit);
     final clamped = ratio.clamp(0.0, 1.0);
 
     final near = budgetProvider.isNearLimit(expensesProvider);
     final over = budgetProvider.isOverLimit(expensesProvider);
 
-    return Scaffold(
-      drawer: const AppDrawer(currentRoute: AppRoutes.budget),
-      appBar: AppBar(
-        title: const Text('Budget'),
-        backgroundColor: color.primary,
-        foregroundColor: color.onPrimary,
-        actions: [
-          IconButton(
-            tooltip: 'Set Budget',
-            icon: const Icon(Icons.tune),
-            onPressed: () => showDialog(
-              context: context,
-              builder: (_) => const _BudgetSetupDialog(),
-            ),
-          ),
-          if (active != null)
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _goHome(context);
+      },
+      child: Scaffold(
+        drawer: const AppDrawer(currentRoute: AppRoutes.budget),
+        appBar: AppBar(
+          title: const Text('Budget'),
+          backgroundColor: color.primary,
+          foregroundColor: color.onPrimary,
+          actions: [
             IconButton(
-              tooltip: 'Clear Budget',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () async {
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => const _ConfirmClearBudgetDialog(),
-                );
-                if (ok == true) {
-                  await context.read<BudgetProvider>().clearBudget();
-                }
-              },
-            ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (active == null)
-            const _NoBudgetCard()
-          else
-            _ActiveBudgetCard(
-              period: active.period,
-              limit: active.limit,
-              start: active.startDate,
-              end: active.endDate,
-              spent: spent,
-              remaining: remaining,
-              progress: clamped,
-              isNear: near,
-              isOver: over,
-            ),
-          const SizedBox(height: 16),
-          Text('Tips', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            color: color.surfaceContainerHigh,
-            child: const Padding(
-              padding: EdgeInsets.all(14),
-              child: Text(
-                'Set a weekly/monthly budget to get alerts when nearing the limit.',
+              tooltip: 'Set Budget',
+              icon: const Icon(Icons.tune),
+              onPressed: () => showDialog(
+                context: context,
+                builder: (_) => const _BudgetSetupDialog(),
               ),
             ),
-          ),
-        ],
+            if (active != null)
+              IconButton(
+                tooltip: 'Clear Budget',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => const _ConfirmClearBudgetDialog(),
+                  );
+                  if (ok == true) {
+                    await context.read<BudgetProvider>().clearBudget();
+                  }
+                },
+              ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (active == null)
+              const _NoBudgetCard()
+            else
+              _ActiveBudgetCard(
+                period: active.period,
+                limit: active.limit,
+                start: active.startDate,
+                end: active.endDate,
+                spent: spent,
+                remaining: remaining,
+                progress: clamped,
+                isNear: near,
+                isOver: over,
+              ),
+            const SizedBox(height: 16),
+            Text('Tips', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Card(
+              color: color.surfaceContainerHigh,
+              child: const Padding(
+                padding: EdgeInsets.all(14),
+                child: Text(
+                  'Set a weekly/monthly budget to get alerts when nearing the limit.',
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,7 +220,9 @@ class _ActiveBudgetCard extends StatelessWidget {
                     title: 'Remaining',
                     value: '₹${remaining.toStringAsFixed(0)}',
                     bg: isOver ? color.errorContainer : color.tertiaryContainer,
-                    fg: isOver ? color.onErrorContainer : color.onTertiaryContainer,
+                    fg: isOver
+                        ? color.onErrorContainer
+                        : color.onTertiaryContainer,
                   ),
                 ),
               ],
@@ -227,14 +241,22 @@ class _ActiveBudgetCard extends StatelessWidget {
             const SizedBox(height: 8),
 
             if (isOver)
-              Text('Over budget. Reduce spending or increase the limit.',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: color.error))
+              Text(
+                'Over budget. Reduce spending or increase the limit.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: color.error),
+              )
             else if (isNear)
-              Text('Near limit. Consider slowing down spending.',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: color.tertiary))
+              Text(
+                'Near limit. Consider slowing down spending.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: color.tertiary,
+                ),
+              )
             else
-              Text('${(progress * 100).toStringAsFixed(0)}% used',
-                  style: theme.textTheme.bodyMedium),
+              Text(
+                '${(progress * 100).toStringAsFixed(0)}% used',
+                style: theme.textTheme.bodyMedium,
+              ),
           ],
         ),
       ),
@@ -260,7 +282,10 @@ class _BudgetStat extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         children: [
           Text(title, style: theme.textTheme.labelLarge?.copyWith(color: fg)),
@@ -349,8 +374,8 @@ class _BudgetSetupDialogState extends State<_BudgetSetupDialog> {
     final dateLabel = _period == 'overall'
         ? 'No date required'
         : (_period == 'weekly'
-            ? 'Week of: ${DateFormat.yMMMd().format(_startOfWeekMonday(_pickedDate))}'
-            : 'Month: ${DateFormat.yMMM().format(_pickedDate)}');
+              ? 'Week of: ${DateFormat.yMMMd().format(_startOfWeekMonday(_pickedDate))}'
+              : 'Month: ${DateFormat.yMMM().format(_pickedDate)}');
 
     return AlertDialog(
       title: const Text('Set budget'),
@@ -375,7 +400,9 @@ class _BudgetSetupDialogState extends State<_BudgetSetupDialog> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _limit,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Limit (₹)',
                 border: OutlineInputBorder(),

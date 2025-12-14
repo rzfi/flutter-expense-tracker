@@ -124,8 +124,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Category
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategory,
                 decoration: InputDecoration(
@@ -148,7 +146,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Date Picker
               InkWell(
                 onTap: _pickDate,
                 child: InputDecorator(
@@ -162,7 +159,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Submit Button
               ElevatedButton.icon(
                 onPressed: _submitExpense,
                 icon: const Icon(Icons.save),
@@ -179,7 +175,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Cancel Button
               TextButton.icon(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.cancel),

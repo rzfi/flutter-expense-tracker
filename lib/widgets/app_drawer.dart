@@ -6,12 +6,14 @@ class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key, required this.currentRoute});
 
   void _go(BuildContext context, String route) {
-    if (route == currentRoute) {
-      Navigator.pop(context); // just close drawer
-      return;
-    }
+    // Close the drawer route first
     Navigator.pop(context);
-    Navigator.pushReplacementNamed(context, route);
+
+    // If already on the selected route, do nothing
+    if (route == currentRoute) return;
+
+    // Reset stack to the selected route
+    Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
   }
 
   @override
@@ -94,8 +96,11 @@ class _DrawerHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.account_balance_wallet_outlined,
-              color: theme.colorScheme.onPrimary, size: 34),
+          Icon(
+            Icons.account_balance_wallet_outlined,
+            color: theme.colorScheme.onPrimary,
+            size: 34,
+          ),
           const SizedBox(height: 12),
           Text(
             'Expense Manager',
