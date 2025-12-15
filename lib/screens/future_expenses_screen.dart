@@ -8,8 +8,45 @@ import 'package:provider/provider.dart';
 
 class FutureExpensesScreen extends StatelessWidget {
   const FutureExpensesScreen({super.key});
+
   void _goHome(BuildContext context) {
     Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
+  }
+
+  Future<double?> _askAmount(BuildContext context, {double? initial}) async {
+    final controller = TextEditingController(
+      text: initial == null ? '' : initial.toStringAsFixed(0),
+    );
+
+    final result = await showDialog<double?>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Confirm purchase'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Amount (₹)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final v = double.tryParse(controller.text.trim());
+              Navigator.pop(context, v);
+            },
+            child: const Text('Add to expenses'),
+          ),
+        ],
+      ),
+    );
+
+    return result;
   }
 
   @override
@@ -54,6 +91,7 @@ class FutureExpensesScreen extends StatelessWidget {
               plannedEstimatedTotal: wishlist.totalPlannedEstimated,
             ),
             const SizedBox(height: 16),
+
             Text('Planned', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             if (planned.isEmpty)
@@ -63,7 +101,45 @@ class FutureExpensesScreen extends StatelessWidget {
                 subtitle: 'Add future purchases to track priorities and costs.',
               )
             else
-              ...planned.map((e) => _FutureExpenseTile(item: e)),
+              ...planned.map(
+                (e) => _FutureExpenseTile(
+                  item: e,
+                  onMarkPurchased: () async {
+                    final amount = await _askAmount(
+                      context,
+                      initial: e.estimatedCost,
+                    );
+                    if (amount == null || amount <= 0) return;
+
+                    await context.read<FutureExpensesProvider>().purchase(
+                      e,
+                      amount: amount,
+                      purchasedAt: DateTime.now(),
+                    );
+                  },
+                  onMarkPlanned: () async {
+                    await context.read<FutureExpensesProvider>().undoPurchase(
+                      e,
+                    );
+                  },
+                  onDelete: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => const _ConfirmDialog(
+                        title: 'Delete item',
+                        message: 'Delete this future expense?',
+                        confirmText: 'Delete',
+                      ),
+                    );
+                    if (confirm == true) {
+                      await context
+                          .read<FutureExpensesProvider>()
+                          .deleteFutureExpense(e);
+                    }
+                  },
+                ),
+              ),
+
             const SizedBox(height: 20),
             Text('Purchased', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -74,7 +150,35 @@ class FutureExpensesScreen extends StatelessWidget {
                 subtitle: 'Mark an item as purchased to move it here.',
               )
             else
-              ...purchased.map((e) => _FutureExpenseTile(item: e)),
+              ...purchased.map(
+                (e) => _FutureExpenseTile(
+                  item: e,
+                  onMarkPurchased: () async {
+                    // If already purchased, do nothing; user should use "Mark as planned" to undo.
+                  },
+                  onMarkPlanned: () async {
+                    await context.read<FutureExpensesProvider>().undoPurchase(
+                      e,
+                    );
+                  },
+                  onDelete: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => const _ConfirmDialog(
+                        title: 'Delete item',
+                        message: 'Delete this future expense?',
+                        confirmText: 'Delete',
+                      ),
+                    );
+                    if (confirm == true) {
+                      await context
+                          .read<FutureExpensesProvider>()
+                          .deleteFutureExpense(e);
+                    }
+                  },
+                ),
+              ),
+
             const SizedBox(height: 80),
           ],
         ),
@@ -96,8 +200,7 @@ class _WishlistSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = theme.colorScheme;
+    final color = Theme.of(context).colorScheme;
 
     return Card(
       color: color.surfaceContainerHigh,
@@ -182,7 +285,16 @@ class _MiniStat extends StatelessWidget {
 
 class _FutureExpenseTile extends StatelessWidget {
   final FutureExpense item;
-  const _FutureExpenseTile({required this.item});
+  final Future<void> Function() onMarkPurchased;
+  final Future<void> Function() onMarkPlanned;
+  final Future<void> Function() onDelete;
+
+  const _FutureExpenseTile({
+    required this.item,
+    required this.onMarkPurchased,
+    required this.onMarkPlanned,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +304,6 @@ class _FutureExpenseTile extends StatelessWidget {
     final dueText = item.dueDate == null
         ? 'No due date'
         : 'Due ${DateFormat.yMMMd().format(item.dueDate!)}';
-
     final costText = item.estimatedCost == null
         ? 'No cost'
         : '₹${item.estimatedCost!.toStringAsFixed(0)}';
@@ -206,24 +317,17 @@ class _FutureExpenseTile extends StatelessWidget {
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert),
           onSelected: (v) async {
-            final provider = context.read<FutureExpensesProvider>();
-            if (v == 'toggle') {
-              await provider.togglePurchased(item);
+            if (v == 'purchase') {
+              if (!item.isPurchased) await onMarkPurchased();
+            } else if (v == 'planned') {
+              if (item.isPurchased) await onMarkPlanned();
             } else if (v == 'delete') {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (_) => const _ConfirmDialog(
-                  title: 'Delete item',
-                  message: 'Delete this future expense?',
-                  confirmText: 'Delete',
-                ),
-              );
-              if (confirm == true) await provider.deleteFutureExpense(item);
+              await onDelete();
             }
           },
           itemBuilder: (_) => [
             PopupMenuItem(
-              value: 'toggle',
+              value: item.isPurchased ? 'planned' : 'purchase',
               child: Text(
                 item.isPurchased ? 'Mark as planned' : 'Mark as purchased',
               ),
@@ -494,6 +598,7 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme;
+
     return AlertDialog(
       title: Text(title),
       content: Text(message),

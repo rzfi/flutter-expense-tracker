@@ -14,7 +14,7 @@ class FutureExpense extends HiveObject {
   double? estimatedCost;
 
   @HiveField(3)
-  int priority; // 1: Low, 2: Medium, 3: High
+  int priority;
 
   @HiveField(4)
   DateTime? dueDate;
@@ -23,10 +23,22 @@ class FutureExpense extends HiveObject {
   bool isPurchased;
 
   @HiveField(6)
-  String category; // To match with expense categories
+  String category;
 
   @HiveField(7)
   String? notes;
+
+  // NEW: link to a real Expense created in expenses box (auto-increment key).
+  @HiveField(8)
+  int? linkedExpenseKey;
+
+  // NEW: what user actually paid (can differ from estimate).
+  @HiveField(9)
+  double? purchasedAmount;
+
+  // NEW: when it was purchased (defaults to now).
+  @HiveField(10)
+  DateTime? purchasedAt;
 
   FutureExpense({
     required this.id,
@@ -37,5 +49,8 @@ class FutureExpense extends HiveObject {
     this.isPurchased = false,
     this.category = 'General',
     this.notes,
+    this.linkedExpenseKey,
+    this.purchasedAmount,
+    this.purchasedAt,
   });
 }

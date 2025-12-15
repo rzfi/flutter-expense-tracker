@@ -59,6 +59,14 @@ void main() async {
             return budget;
           },
         ),
+        ChangeNotifierProxyProvider<ExpensesProvider, FutureExpensesProvider>(
+          create: (_) => FutureExpensesProvider()..load(),
+          update: (_, expensesProvider, futureProvider) {
+            futureProvider ??= FutureExpensesProvider()..load();
+            futureProvider.attachExpenses(expensesProvider);
+            return futureProvider;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
