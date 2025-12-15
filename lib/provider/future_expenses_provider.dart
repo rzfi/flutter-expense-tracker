@@ -42,11 +42,8 @@ class FutureExpensesProvider extends ChangeNotifier {
   }
 
   static int _wishlistSort(FutureExpense a, FutureExpense b) {
-    // Higher priority first
     final p = b.priority.compareTo(a.priority);
     if (p != 0) return p;
-
-    // Earlier due date first (nulls last)
     final ad = a.dueDateOrMax;
     final bd = b.dueDateOrMax;
     final d = ad.compareTo(bd);

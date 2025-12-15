@@ -17,6 +17,5 @@ class FinanceBoxes {
       Hive.box<FutureExpense>(futureExpensesBoxName);
   static Box<Budget> get budgets => Hive.box<Budget>(budgetsBoxName);
 
-  // Store active budget under a fixed key for simplicity.
   static const String activeBudgetKey = 'active_budget';
 }
