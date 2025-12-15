@@ -21,7 +21,8 @@ class FutureExpensesScreen extends StatelessWidget {
     final result = await showDialog<double?>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Confirm purchase'),
+        title: Text('Confirm purchase'),
+        
         content: TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -99,6 +100,7 @@ class FutureExpensesScreen extends StatelessWidget {
                 icon: Icons.shopping_bag_outlined,
                 title: 'No planned items',
                 subtitle: 'Add future purchases to track priorities and costs.',
+                
               )
             else
               ...planned.map(

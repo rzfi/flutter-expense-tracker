@@ -1,10 +1,11 @@
 import 'package:expense/models/expense.dart';
 import 'package:expense/navigation/app_routes.dart';
-import 'package:expense/provider/theme_provider.dart';
 import 'package:expense/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:provider/provider.dart';
+
+// import 'package:provider/provider.dart';
+// import 'package:expense/provider/theme_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -50,8 +51,8 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme;
-    final themeProvider = context.watch<ThemeProvider>();
-    final isDark = themeProvider.isDarkMode;
+    // final themeProvider = context.watch<ThemeProvider>();
+    // final isDark = themeProvider.isDarkMode;
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
@@ -67,24 +68,24 @@ class SettingsScreen extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('General', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Card(
-              color: color.surfaceContainerHigh,
-              child: SwitchListTile.adaptive(
-                secondary: Icon(
-                  isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                ),
-                title: Text(isDark ? 'Dark mode' : 'Light mode'),
-                subtitle: Text(
-                  isDark ? 'Enabled' : 'Enabled',
-                  style: theme.textTheme.bodySmall,
-                ),
-                // subtitle: Text(isDark ? 'On' : 'Off', style: theme.textTheme.bodySmall),
-                value: isDark,
-                onChanged: (_) => context.read<ThemeProvider>().toggleTheme(),
-              ),
-            ),
+            // Text('General', style: theme.textTheme.titleMedium),
+            // const SizedBox(height: 8),
+            // Card(
+            //   color: color.surfaceContainerHigh,
+            //   child: SwitchListTile.adaptive(
+            //     secondary: Icon(
+            //       isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+            //     ),
+            //     title: Text(isDark ? 'Dark mode' : 'Light mode'),
+            //     subtitle: Text(
+            //       isDark ? 'Enabled' : 'Enabled',
+            //       style: theme.textTheme.bodySmall,
+            //     ),
+            //     // subtitle: Text(isDark ? 'On' : 'Off', style: theme.textTheme.bodySmall),
+            //     value: isDark,
+            //     onChanged: (_) => context.read<ThemeProvider>().toggleTheme(),
+            //   ),
+            // ),
             const SizedBox(height: 24),
             Text('Danger Zone', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -102,7 +103,7 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(
                   'Deletes all expense records from this device.',
                   style: TextStyle(
-                    color: color.onTertiaryContainer.withOpacity(0.9),
+                    color: color.onTertiaryContainer,
                   ),
                 ),
                 trailing: Icon(

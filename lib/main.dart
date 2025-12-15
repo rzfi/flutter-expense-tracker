@@ -83,7 +83,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Budgo',
-          theme: themeProvider.materialTheme.lightScheme().copyWith(
+          theme: themeProvider.materialTheme.darkScheme().copyWith(
             visualDensity: VisualDensity.adaptivePlatformDensity,
           ),
           darkTheme: themeProvider.materialTheme.darkScheme().copyWith(
